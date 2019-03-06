@@ -1,10 +1,13 @@
 module Main exposing (Item, main)
 
 import Browser
+import Dict
 import Html exposing (Attribute, Html, button, div, input, li, text, ul)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import List
+import String
+import Tuple
 
 
 main =
@@ -19,16 +22,20 @@ type alias Item =
     { content : String }
 
 
+type alias Id =
+    Int
+
+
 type alias Model =
     { currentInput : String
-    , items : List Item
-    , nextId : Int
+    , items : Dict.Dict Id Item
+    , nextId : Id
     }
 
 
 init : Model
 init =
-    { currentInput = "", items = [], nextId = 1 }
+    { currentInput = "", items = Dict.empty, nextId = 1 }
 
 
 
@@ -48,7 +55,7 @@ update msg model =
 
         AddInputToInputs newInputItemContent ->
             { model
-                | items = Item newInputItemContent :: model.items
+                | items = Dict.insert model.nextId (Item newInputItemContent) model.items
                 , nextId = model.nextId + 1
             }
 
@@ -61,12 +68,18 @@ view : Model -> Html Msg
 view model =
     div []
         [ input [ placeholder "Text to reverse", value model.currentInput, onInput ChangeCurrentInput ] []
-        , div [] [ text (String.reverse model.currentInput) ]
         , button [ onClick (AddInputToInputs model.currentInput) ] [ text "Submit" ]
         , renderList model.items
         ]
 
 
-renderList : List Item -> Html Msg
-renderList lst =
-    ul [] (List.map (\l -> li [] [ text l.content ]) lst)
+renderList : Dict.Dict Id Item -> Html Msg
+renderList dct =
+    let
+        lst =
+            Dict.toList dct
+
+        makeText l =
+            String.fromInt (Tuple.first l) ++ " - " ++ (Tuple.second l).content
+    in
+    ul [] (List.map (\l -> li [] [ text (makeText l) ]) lst)
