@@ -18,6 +18,11 @@ main =
 -- Model
 
 
+type SortOrder
+    = ByContent
+    | ById
+
+
 type alias Item =
     { content : String }
 
@@ -26,16 +31,25 @@ type alias Id =
     Int
 
 
+{-| For the view
+-}
+type alias ListItem =
+    { id : Id
+    , item : Item
+    }
+
+
 type alias Model =
     { currentInput : String
     , items : Dict.Dict Id Item
     , nextId : Id
+    , sortOrder : SortOrder
     }
 
 
 init : Model
 init =
-    { currentInput = "", items = Dict.empty, nextId = 1 }
+    { currentInput = "", items = Dict.empty, nextId = 1, sortOrder = ById }
 
 
 
@@ -43,26 +57,37 @@ init =
 
 
 type Msg
-    = ChangeCurrentInput String
-    | AddInputToInputs String
+    = ChangeNewInput String
+    | AddNewInputToItems String
     | RemoveItem Id
+    | ChangeSortOrder SortOrder
 
 
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        ChangeCurrentInput newContent ->
-            { model | currentInput = newContent }
+        ChangeNewInput newContent ->
+            if newContent == "" then
+                model
 
-        AddInputToInputs newInputItemContent ->
+            else
+                { model | currentInput = newContent }
+
+        AddNewInputToItems newInputItemContent ->
             { model
                 | items = Dict.insert model.nextId (Item newInputItemContent) model.items
                 , nextId = model.nextId + 1
+                , currentInput = ""
             }
 
         RemoveItem id ->
             { model
                 | items = Dict.remove id model.items
+            }
+
+        ChangeSortOrder newOrder ->
+            { model
+                | sortOrder = newOrder
             }
 
 
@@ -73,31 +98,42 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ input [ placeholder "New Item", value model.currentInput, onInput ChangeCurrentInput ] []
-        , button [ onClick (AddInputToInputs model.currentInput) ] [ text "Submit" ]
-        , renderList model.items
+        [ input [ placeholder "New Item", value model.currentInput, onInput ChangeNewInput ] []
+        , button [ onClick (AddNewInputToItems model.currentInput) ] [ text "Submit" ]
+        , button [ onClick (ChangeSortOrder ById) ] [ text "Sort By ID" ]
+        , button [ onClick (ChangeSortOrder ByContent) ] [ text "Sort By Content" ]
+        , renderList model.items model.sortOrder
         ]
 
 
-renderList : Dict.Dict Id Item -> Html Msg
-renderList dct =
+renderList : Dict.Dict Id Item -> SortOrder -> Html Msg
+renderList dct sortOrder =
     let
         lst =
-            Dict.toList dct
+            List.map (\l -> ListItem (Tuple.first l) (Tuple.second l)) (Dict.toList dct)
+
+        -- TODO: why isn't this working?
+        sortByContent listItemA listItemB =
+            compare listItemA.item.content listItemB.item.content
+
+        sortedList =
+            case sortOrder of
+                ById ->
+                    List.sortBy .id lst
+
+                ByContent ->
+                    List.sortWith sortByContent lst
     in
-    ul [] (List.map (\l -> renderItem l) lst)
+    ul [] (List.map (\l -> renderItem l) sortedList)
 
 
-renderItem : ( Id, Item ) -> Html Msg
-renderItem idItem =
+renderItem : ListItem -> Html Msg
+renderItem listItem =
     let
-        id =
-            Tuple.first idItem
-
-        item =
-            Tuple.second idItem
-
         makeText =
-            String.fromInt id ++ " - " ++ item.content
+            String.fromInt listItem.id ++ " - " ++ listItem.item.content
     in
-    li [] [ text makeText, button [ onClick (RemoveItem id) ] [ text "Remove" ] ]
+    li []
+        [ text makeText
+        , button [ onClick (RemoveItem listItem.id) ] [ text "Remove" ]
+        ]
