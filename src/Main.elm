@@ -45,6 +45,7 @@ init =
 type Msg
     = ChangeCurrentInput String
     | AddInputToInputs String
+    | RemoveItem Id
 
 
 update : Msg -> Model -> Model
@@ -59,6 +60,11 @@ update msg model =
                 , nextId = model.nextId + 1
             }
 
+        RemoveItem id ->
+            { model
+                | items = Dict.remove id model.items
+            }
+
 
 
 -- View
@@ -67,7 +73,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div []
-        [ input [ placeholder "Text to reverse", value model.currentInput, onInput ChangeCurrentInput ] []
+        [ input [ placeholder "New Item", value model.currentInput, onInput ChangeCurrentInput ] []
         , button [ onClick (AddInputToInputs model.currentInput) ] [ text "Submit" ]
         , renderList model.items
         ]
@@ -78,8 +84,20 @@ renderList dct =
     let
         lst =
             Dict.toList dct
-
-        makeText l =
-            String.fromInt (Tuple.first l) ++ " - " ++ (Tuple.second l).content
     in
-    ul [] (List.map (\l -> li [] [ text (makeText l) ]) lst)
+    ul [] (List.map (\l -> renderItem l) lst)
+
+
+renderItem : ( Id, Item ) -> Html Msg
+renderItem idItem =
+    let
+        id =
+            Tuple.first idItem
+
+        item =
+            Tuple.second idItem
+
+        makeText =
+            String.fromInt id ++ " - " ++ item.content
+    in
+    li [] [ text makeText, button [ onClick (RemoveItem id) ] [ text "Remove" ] ]
