@@ -4,3 +4,5 @@ elm-stuff/
 repl-temp-*
 
 elm.js
+# Default of elm make
+index.html
